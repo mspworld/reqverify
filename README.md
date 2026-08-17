@@ -524,9 +524,10 @@ Claude.
 ## Bugs found while producing this evidence
 
 Every result above is from the *current* code — nothing here is preserved
-for nostalgia. Three real bugs and one design conflict between two
-independently-correct features surfaced while building the `login.md`
-example and re-verifying the others, all found by actually running the
+for nostalgia. Three real bugs, one design conflict between two
+independently-correct features, and one test-hermeticity bug surfaced
+while building the `login.md` example, re-verifying the others, and
+responding to an external review, all found by actually running the
 pipeline repeatedly and reading the output carefully, not by inspection.
 Fixing them changed `coupon.md` from a file that had never once produced
 `FINAL: VERIFIED` in this project's history to one that reliably does.
@@ -603,6 +604,27 @@ this in the first place. A genuinely missing *grounded* item still fails
 stage 1 exactly as before — see `tests/test_requirement_coverage.py`'s two
 new tests, one proving the skip, one proving real gaps still gate.
 
+**5. Two of `tests/test_intent.py`'s tests silently depended on this repo's
+own `.env` file, and one was passing for the wrong reason.** All three
+tests mock `anthropic.Anthropic` but never mocked `get_anthropic_api_key` —
+and `extract_intent()` calls `anthropic.Anthropic(api_key=get_anthropic_api_key())`,
+so the real key-check function runs (its argument is evaluated) before the
+mocked client is ever reached. With this repo's `.env` present, that
+function returns a real key and nothing looks wrong. An external review
+(Gemini) ran the suite in an environment with no `ANTHROPIC_API_KEY` set at
+all — the actual condition a fresh clone or CI runner is in, since `.env`
+is gitignored — and got 2 real failures, reproduced here by re-running the
+suite from a clean `git archive` checkout with no `.venv`/`.env` carried
+over. Worse than the 2 failures: the third test,
+`test_extract_intent_raises_if_model_never_calls_the_tool`, was passing —
+but its bare `pytest.raises(RuntimeError)` couldn't tell the difference
+between the exception it claimed to test for and the same environment
+RuntimeError breaking the other two, so it was accidentally verifying
+nothing. Fixed by mocking `get_anthropic_api_key` in all three tests (now
+genuinely hermetic — verified again from a clean checkout) and tightening
+the third test to `pytest.raises(RuntimeError, match="did not call
+record_intent")`, so it can no longer pass for the wrong reason.
+
 ## Testing this project itself
 
 ```
@@ -617,7 +639,7 @@ package the project uses for `BM25Retriever` — not an issue in this code.)
 | File | What it proves | Calls Claude? |
 |---|---|---|
 | `tests/test_context.py` | `##`-header chunking, empty files, multi-dir BM25 retrieval | No — pure logic |
-| `tests/test_intent.py` | `extract_intent()` parses a tool-call response into `Intent`, forces the right `tool_choice`, raises if the model never calls the tool | No — Anthropic client mocked with a hand-built fixture |
+| `tests/test_intent.py` | `extract_intent()` parses a tool-call response into `Intent`, forces the right `tool_choice`, raises specifically when the model never calls the tool (not just on any `RuntimeError` — [issue #5](#bugs-found-while-producing-this-evidence)) | No — Anthropic client *and* `get_anthropic_api_key` both mocked, verified hermetic from a clean checkout with no `.env` |
 | `tests/test_requirement_coverage.py` | Stage 1 (deterministic) short-circuits before stage 2 (`GEval`); `not_expected` is never deterministically gated ([bug #2](#bugs-found-while-producing-this-evidence)); negation words survive keyword extraction; an ungrounded `expected` item doesn't gate the run, but a genuinely missing grounded one still does ([issue #4](#bugs-found-while-producing-this-evidence)) | No — `GEval` mocked to isolate the orchestration logic |
 | `tests/test_rag_grounding.py` | `check_grounding` calls both `FaithfulnessMetric` and `ContextualRelevancyMetric` with the correct `retrieval_context`, and returns two distinct results | No — judges mocked to isolate the orchestration logic |
 | `tests/test_cli.py` | `_select_target_text` skips a preamble chunk and picks the first real `##` section (see [bug #1](#bugs-found-while-producing-this-evidence)) | No — pure logic |
