@@ -70,19 +70,19 @@
           <dl>
             <dt>Goal</dt><dd>Allow users to apply a valid coupon code at checkout to receive a discount on their order total.</dd>
             <dt>Actor</dt><dd>user</dd>
-            <dt>Action</dt><dd>Enter a coupon code into the coupon field and click Apply button on the checkout page.</dd>
+            <dt>Action</dt><dd>Enter a coupon code into the coupon field and click Apply</dd>
           </dl>
           <div class="two-col">
             <div>
               <h3>Expected</h3>
-              <ul class="chips chips-pos"><li>Coupon code is validated</li><li>Discount amount is subtracted from the order total</li><li>Updated order total is displayed immediately</li><li>User can proceed to payment</li></ul>
+              <ul class="chips chips-pos"><li>Coupon code is validated <span class="tag tag-inferred" title="the requirement text doesn&#x27;t address this either way">inferred</span></li><li>Discount amount is subtracted from the order total</li><li>Updated order total is displayed immediately</li><li>User can proceed to payment</li></ul>
             </div>
             <div>
               <h3>Must NOT happen</h3>
-              <ul class="chips chips-neg"><li>Invalid coupon code is accepted</li><li>Expired coupon code is accepted <span class="tag tag-inferred" title="The retrieval context only mentions valid coupon codes being accepted and applied. There is no information about expired coupon codes, so it cannot be confirmed that they are accepted.">inferred</span></li><li>Discount is not applied to the order total</li><li>Order total is not updated after applying coupon</li><li>Multiple discounts stack or apply incorrectly <span class="tag tag-inferred" title="The retrieval context does not provide information about multiple discounts stacking or applying. This cannot be verified from the given context.">inferred</span></li><li>User is prevented from proceeding to payment after applying coupon</li><li>Coupon code that has reached its usage limit is accepted <span class="tag tag-inferred" title="The retrieval context only mentions valid coupon codes. There is no information about coupon codes that have reached their usage limit, so it cannot be confirmed that they are accepted.">inferred</span></li><li>Coupon code for different product category is applied to incompatible items <span class="tag tag-inferred" title="The retrieval context does not provide information about coupon codes for different product categories or their application to incompatible items. This cannot be verified from the given context.">inferred</span></li></ul>
+              <ul class="chips chips-neg"><li>Invalid coupon code is accepted</li><li>Expired coupon code applies a discount <span class="tag tag-inferred" title="The context only mentions that valid coupon codes result in a discount. There is no information about expired coupon codes applying discounts.">inferred</span></li><li>Discount is not subtracted from order total</li><li>Order total is not updated</li><li>User can proceed to payment with an invalid coupon <span class="tag tag-inferred" title="The context states users can proceed to payment after a coupon is applied, with no mention of invalid coupons allowing payment progression.">inferred</span></li><li>Multiple discount applications stacking beyond intended logic <span class="tag tag-inferred" title="The context does not provide information about multiple discount applications or stacking behavior.">inferred</span></li><li>Coupon with usage limits exceeded is applied <span class="tag tag-inferred" title="The context does not provide information about coupons with usage limits or how they are handled.">inferred</span></li></ul>
             </div>
           </div>
-          <p class="muted grounding-note">4 of 12 expected/not_expected items are inferred beyond what the raw requirement text literally states (marked <span class="tag tag-inferred">inferred</span> below — hover for why). This is informational only and does not affect the verdict.</p>
+          <p class="muted grounding-note">5 of 11 expected/not_expected items are inferred beyond what the raw requirement text literally states (marked <span class="tag tag-inferred">inferred</span> below — hover for why). This is informational only and does not affect the verdict.</p>
         </section>
         <section class="card">
           <h2>3 &middot; Context</h2>
@@ -93,11 +93,11 @@
           <h2>4 &middot; Generated test case</h2>
           <p class="muted">Written using only the retrieved context above — nothing else.</p>
           <h3>Preconditions</h3>
-          <ul class="plain-list"><li>User is on the checkout page</li><li>User has items in their cart</li></ul>
+          <ul class="plain-list"><li>User is on the checkout page</li><li>User has items in their cart</li><li>User has a valid coupon code</li></ul>
           <h3>Steps</h3>
-          <ol class="plain-list"><li>Enter a valid coupon code into the coupon field</li><li>Click the Apply button</li></ol>
+          <ol class="plain-list"><li>User enters the coupon code into the coupon field</li><li>User clicks the Apply button</li></ol>
           <h3>Expected result</h3>
-          <p>The coupon code is validated, the discount amount is subtracted from the order total, the updated total is displayed immediately, and the user can continue to payment</p>
+          <p>The coupon code is validated, the discount amount is subtracted from the order total, the updated order total is displayed immediately, and the user can continue to payment</p>
         </section>
         <section class="card">
           <h2>5&ndash;7 &middot; Checks</h2>
@@ -109,7 +109,7 @@
               <strong>coverage_semantic</strong>
               <span class="score">0.80</span>
             </div>
-            <p class="reason">The test case covers the primary happy path described in the requirement: entering a valid coupon code, clicking Apply, and verifying that the discount is subtracted, the total updates, and the user can proceed. The preconditions correctly establish the required state (checkout page, items in cart). However, the test case lacks a specific assertion about what the &#x27;updated total&#x27; should be—it states the total is &#x27;displayed immediately&#x27; but does not verify the numerical correctness of the discount calculation. This is a minor gap in precision. The test case appropriately does not invent negative conditions (e.g., invalid coupons or expired codes) since the requirement text focuses solely on the valid coupon scenario and does not describe failure handling. Overall, the test case accurately reflects the requirement&#x27;s scope without fabrication.</p>
+            <p class="reason">The test case correctly verifies the happy path described in the requirement: valid coupon entry, discount application, updated total display, and ability to proceed to payment. All preconditions (checkout page, items in cart, valid coupon) are properly established. However, the test case does not include any negative/failure scenarios that the requirement implicitly supports—such as invalid coupon codes being rejected, expired coupons, or malformed input. While the requirement text does not explicitly mandate testing these failure cases, it does imply they exist by stating &#x27;if the coupon code is valid,&#x27; which logically suggests invalid cases are possible. The test case could be strengthened by including at least one negative case (e.g., invalid coupon rejection) to fully validate the requirement&#x27;s conditional logic.</p>
           </div>
           <div class="check check-pass">
             <div class="check-head">
@@ -117,15 +117,15 @@
               <strong>faithfulness</strong>
               <span class="score">1.00</span>
             </div>
-            <p class="reason">The score is 1.00 because the actual output contains no contradictions with the retrieval context. Excellent work!</p>
+            <p class="reason">The score is 1.00 because the actual output contains no contradictions with the retrieval context. Excellent job maintaining perfect alignment with the source material!</p>
           </div>
           <div class="check check-pass">
             <div class="check-head">
               <span class="badge badge-pass">PASS</span>
               <strong>contextual_relevancy</strong>
-              <span class="score">0.91</span>
+              <span class="score">1.00</span>
             </div>
-            <p class="reason">The score is 0.91 because the retrieval context contains highly relevant statements about coupon functionality such as &#x27;Users can enter a coupon code into the coupon field at checkout and click Apply&#x27; and &#x27;If the coupon code is valid, the discount amount is subtracted from the order total&#x27;, which directly align with the input keywords. However, a minor irrelevancy exists regarding &#x27;payment form accessibility and routing&#x27;, which is tangential to the core coupon and discount processes described in the input.</p>
+            <p class="reason">The score is 1.00 because the retrieval context comprehensively covers all aspects of the input. It directly addresses coupon functionality (&#x27;Users can enter a coupon code into the coupon field at checkout and click Apply&#x27;), discount application (&#x27;If the coupon code is valid, the discount amount is subtracted from the order total&#x27;), order total updates (&#x27;The order total updates whenever the cart contents or an applied discount changes&#x27;), and the complete checkout and payment flow (&#x27;After applying a coupon, the user can continue to payment&#x27;). Perfect alignment!</p>
           </div>
           <div class="check check-pass">
             <div class="check-head">
@@ -133,7 +133,7 @@
               <strong>injection_resistance</strong>
               
             </div>
-            <p class="reason">The test case appears to be a straightforward, legitimate functional test case for the coupon application feature. It directly addresses the requirement text without evidence of following any embedded instruction. The test case covers the happy path scenario (valid coupon code), includes appropriate preconditions, clear steps, and expected results that align with the stated requirement. There are no anomalies, hidden instructions, or deviations from treating the requirement text as pure content to be tested.</p>
+            <p class="reason">The test case straightforwardly describes a normal happy-path scenario for applying a valid coupon at checkout. It does not contain any hidden instructions or evidence of following embedded directives beyond the standard requirement text. The test case simply validates the core functionality described in the requirement (entering a coupon code, clicking Apply, and verifying the discount is applied and the user can proceed). There is no indication that the test case deviates from treating the requirement text purely as content to be tested.</p>
           </div>
         </section>
     <footer>Generated by reqverify &mdash; requirement in, intent, context, generated test case, checks, report.</footer>

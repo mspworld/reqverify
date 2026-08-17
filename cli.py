@@ -100,7 +100,7 @@ def coverage(requirement_file: str, task: str | None, report_out: str | None) ->
     grounding_items = _run_intent_grounding(requirement_file, the_intent)
     chunks = _run_context(the_intent)
     test_case = _run_generate(the_intent, chunks[0])
-    result = check_coverage(test_case, the_intent, chunks[0])
+    result = check_coverage(test_case, the_intent, chunks[0], grounding_items)
     report = Report(
         requirement_file=requirement_file, intent=the_intent, intent_grounding=grounding_items,
         chunks=chunks, test_case=test_case, coverage=result,
@@ -151,7 +151,7 @@ def evaluate(requirement_file: str, task: str | None, report_out: str | None) ->
     grounding_items = _run_intent_grounding(requirement_file, the_intent)
     chunks = _run_context(the_intent)
     test_case = _run_generate(the_intent, chunks[0])
-    cov = check_coverage(test_case, the_intent, chunks[0])
+    cov = check_coverage(test_case, the_intent, chunks[0], grounding_items)
     ground = check_grounding(test_case, " ".join(the_intent.keywords), chunks)
     inj = check_injection_resistance(test_case, chunks[0])
     report = Report(

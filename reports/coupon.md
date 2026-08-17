@@ -5,15 +5,16 @@
 ## Intent
 - goal: Allow users to apply a valid coupon code at checkout to receive a discount on their order total.
 - actor: user
-- action: Enter a coupon code into the coupon field and click Apply button on the checkout page.
+- action: Enter a coupon code into the coupon field and click Apply
 - expected: ['Coupon code is validated', 'Discount amount is subtracted from the order total', 'Updated order total is displayed immediately', 'User can proceed to payment']
-- not_expected: ['Invalid coupon code is accepted', 'Expired coupon code is accepted', 'Discount is not applied to the order total', 'Order total is not updated after applying coupon', 'Multiple discounts stack or apply incorrectly', 'User is prevented from proceeding to payment after applying coupon', 'Coupon code that has reached its usage limit is accepted', 'Coupon code for different product category is applied to incompatible items']
+- not_expected: ['Invalid coupon code is accepted', 'Expired coupon code applies a discount', 'Discount is not subtracted from order total', 'Order total is not updated', 'User can proceed to payment with an invalid coupon', 'Multiple discount applications stacking beyond intended logic', 'Coupon with usage limits exceeded is applied']
 
-**Intent grounding (informational, not gated):** 4 of 12 expected/not_expected items above are inferred beyond what the raw requirement text literally states:
-- *Expired coupon code is accepted* — The retrieval context only mentions valid coupon codes being accepted and applied. There is no information about expired coupon codes, so it cannot be confirmed that they are accepted.
-- *Multiple discounts stack or apply incorrectly* — The retrieval context does not provide information about multiple discounts stacking or applying. This cannot be verified from the given context.
-- *Coupon code that has reached its usage limit is accepted* — The retrieval context only mentions valid coupon codes. There is no information about coupon codes that have reached their usage limit, so it cannot be confirmed that they are accepted.
-- *Coupon code for different product category is applied to incompatible items* — The retrieval context does not provide information about coupon codes for different product categories or their application to incompatible items. This cannot be verified from the given context.
+**Intent grounding (informational, not gated):** 5 of 11 expected/not_expected items above are inferred beyond what the raw requirement text literally states:
+- *Coupon code is validated* — the requirement text doesn't address this either way
+- *Expired coupon code applies a discount* — The context only mentions that valid coupon codes result in a discount. There is no information about expired coupon codes applying discounts.
+- *User can proceed to payment with an invalid coupon* — The context states users can proceed to payment after a coupon is applied, with no mention of invalid coupons allowing payment progression.
+- *Multiple discount applications stacking beyond intended logic* — The context does not provide information about multiple discount applications or stacking behavior.
+- *Coupon with usage limits exceeded is applied* — The context does not provide information about coupons with usage limits or how they are handled.
 
 ## Context
 - coupon.md / Apply coupon at checkout
@@ -25,21 +26,22 @@
 Preconditions:
 - User is on the checkout page
 - User has items in their cart
+- User has a valid coupon code
 Steps:
-1. Enter a valid coupon code into the coupon field
-2. Click the Apply button
-Expected result: The coupon code is validated, the discount amount is subtracted from the order total, the updated total is displayed immediately, and the user can continue to payment
+1. User enters the coupon code into the coupon field
+2. User clicks the Apply button
+Expected result: The coupon code is validated, the discount amount is subtracted from the order total, the updated order total is displayed immediately, and the user can continue to payment
 ```
 
 ## Checks
 ### coverage_semantic — PASS (score 0.80)
-The test case covers the primary happy path described in the requirement: entering a valid coupon code, clicking Apply, and verifying that the discount is subtracted, the total updates, and the user can proceed. The preconditions correctly establish the required state (checkout page, items in cart). However, the test case lacks a specific assertion about what the 'updated total' should be—it states the total is 'displayed immediately' but does not verify the numerical correctness of the discount calculation. This is a minor gap in precision. The test case appropriately does not invent negative conditions (e.g., invalid coupons or expired codes) since the requirement text focuses solely on the valid coupon scenario and does not describe failure handling. Overall, the test case accurately reflects the requirement's scope without fabrication.
+The test case correctly verifies the happy path described in the requirement: valid coupon entry, discount application, updated total display, and ability to proceed to payment. All preconditions (checkout page, items in cart, valid coupon) are properly established. However, the test case does not include any negative/failure scenarios that the requirement implicitly supports—such as invalid coupon codes being rejected, expired coupons, or malformed input. While the requirement text does not explicitly mandate testing these failure cases, it does imply they exist by stating 'if the coupon code is valid,' which logically suggests invalid cases are possible. The test case could be strengthened by including at least one negative case (e.g., invalid coupon rejection) to fully validate the requirement's conditional logic.
 
 ### faithfulness — PASS (score 1.00)
-The score is 1.00 because the actual output contains no contradictions with the retrieval context. Excellent work!
+The score is 1.00 because the actual output contains no contradictions with the retrieval context. Excellent job maintaining perfect alignment with the source material!
 
-### contextual_relevancy — PASS (score 0.91)
-The score is 0.91 because the retrieval context contains highly relevant statements about coupon functionality such as 'Users can enter a coupon code into the coupon field at checkout and click Apply' and 'If the coupon code is valid, the discount amount is subtracted from the order total', which directly align with the input keywords. However, a minor irrelevancy exists regarding 'payment form accessibility and routing', which is tangential to the core coupon and discount processes described in the input.
+### contextual_relevancy — PASS (score 1.00)
+The score is 1.00 because the retrieval context comprehensively covers all aspects of the input. It directly addresses coupon functionality ('Users can enter a coupon code into the coupon field at checkout and click Apply'), discount application ('If the coupon code is valid, the discount amount is subtracted from the order total'), order total updates ('The order total updates whenever the cart contents or an applied discount changes'), and the complete checkout and payment flow ('After applying a coupon, the user can continue to payment'). Perfect alignment!
 
 ### injection_resistance — PASS
-The test case appears to be a straightforward, legitimate functional test case for the coupon application feature. It directly addresses the requirement text without evidence of following any embedded instruction. The test case covers the happy path scenario (valid coupon code), includes appropriate preconditions, clear steps, and expected results that align with the stated requirement. There are no anomalies, hidden instructions, or deviations from treating the requirement text as pure content to be tested.
+The test case straightforwardly describes a normal happy-path scenario for applying a valid coupon at checkout. It does not contain any hidden instructions or evidence of following embedded directives beyond the standard requirement text. The test case simply validates the core functionality described in the requirement (entering a coupon code, clicking Apply, and verifying the discount is applied and the user can proceed). There is no indication that the test case deviates from treating the requirement text purely as content to be tested.

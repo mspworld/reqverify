@@ -4,7 +4,7 @@ CLI calls, no reimplemented logic here.
 from unittest.mock import patch
 
 from core.checks import _keywords, check_coverage
-from core.schema import Intent, RequirementChunk, TestCase
+from core.schema import Intent, IntentGroundingItem, RequirementChunk, TestCase
 
 CHUNK = RequirementChunk(
     source_file="coupon.md",
@@ -92,3 +92,68 @@ def test_negation_words_survive_keyword_extraction():
     """
     assert "not" in _keywords("field is not empty")
     assert "no" in _keywords("no session is created")
+
+
+def test_ungrounded_expected_item_does_not_gate_the_run():
+    """An `expected` item that intent's own grounding annotation flagged as
+    not textually supported shouldn't fail the run for being missing from
+    the generated test — the requirement text never said it, so the test
+    correctly not containing it isn't a real gap. It's still surfaced (as
+    `inferred`) under Intent in the report regardless of this check's
+    outcome — see core/report.py.
+    """
+    missing_but_ungrounded = TestCase(
+        preconditions=["user is on checkout page"],
+        steps=["user enters a coupon code", "user clicks Apply"],
+        expected_result="the discount is subtracted from order total and the updated total is shown",
+        source_chunk=CHUNK,
+    )
+    grounding = [
+        IntentGroundingItem(
+            claim="discount subtracted from order total", supported=True, reason="stated in the text"
+        ),
+        IntentGroundingItem(
+            claim="updated total is shown", supported=True, reason="stated in the text"
+        ),
+        IntentGroundingItem(
+            claim="user receives an email receipt", supported=False, reason="not mentioned anywhere in the text"
+        ),
+    ]
+    intent_with_extra_item = INTENT.model_copy(
+        update={"expected": [*INTENT.expected, "user receives an email receipt"]}
+    )
+
+    with patch("core.checks.run_coverage_geval") as mock_geval:
+        mock_geval.return_value.passed = True
+        result = check_coverage(missing_but_ungrounded, intent_with_extra_item, CHUNK, grounding)
+
+    mock_geval.assert_called_once()  # stage 1 didn't fail on the ungrounded item
+    assert result.passed is True
+
+
+def test_missing_grounded_expected_item_still_gates_the_run():
+    """Regression guard for the fix above: it must only stop penalizing
+    gaps the grounding annotation flagged as never-really-stated — a
+    genuinely missing item that IS grounded in the text still fails stage 1
+    exactly as before.
+    """
+    missing_and_grounded = TestCase(
+        preconditions=["user is on checkout page"],
+        steps=["user enters a coupon code", "user clicks Apply"],
+        expected_result="the coupon field accepts input",  # never mentions the discount or total
+        source_chunk=CHUNK,
+    )
+    grounding = [
+        IntentGroundingItem(
+            claim="discount subtracted from order total", supported=True, reason="stated in the text"
+        ),
+        IntentGroundingItem(claim="updated total is shown", supported=True, reason="stated in the text"),
+    ]
+
+    with patch("core.checks.run_coverage_geval") as mock_geval:
+        result = check_coverage(missing_and_grounded, INTENT, CHUNK, grounding)
+
+    mock_geval.assert_not_called()
+    assert result.passed is False
+    assert "missing expected item" in result.reason
+    assert "discount subtracted from order total" in result.reason

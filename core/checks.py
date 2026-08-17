@@ -10,7 +10,7 @@ import re
 import anthropic
 
 from core.config import ANTHROPIC_MODEL, get_anthropic_api_key
-from core.schema import CheckResult, Intent, RequirementChunk, TestCase
+from core.schema import CheckResult, Intent, IntentGroundingItem, RequirementChunk, TestCase
 from integrations.deepeval import run_contextual_relevancy, run_coverage_geval, run_faithfulness
 
 _STOPWORDS = {
@@ -50,11 +50,33 @@ def _check_expected(expected: list[str], haystack: str, threshold: float = 0.6) 
     return present, missing
 
 
-def check_coverage(test_case: TestCase, intent: Intent, chunk: RequirementChunk) -> CheckResult:
+def check_coverage(
+    test_case: TestCase,
+    intent: Intent,
+    chunk: RequirementChunk,
+    intent_grounding: list[IntentGroundingItem] | None = None,
+) -> CheckResult:
     """Two stages: deterministic keyword presence check on `expected` only,
     then (if that passes) semantic GEval judgment — matching the original
-    build spec's stage-1 algorithm exactly (intent.expected only, no
-    not_expected sub-check).
+    build spec's stage-1 algorithm (intent.expected only, no not_expected
+    sub-check — see the removal note below).
+
+    Stage 1 does not gate on an `expected` item that
+    `annotate_intent_grounding` (core/intent.py) already flagged as not
+    textually supported by the requirement. Without this, the two checks
+    can contradict each other: intent's own grounding check says an item
+    was invented, and coverage fails the run for the generated test not
+    containing that same invented item — punishing generation for correctly
+    NOT fabricating something the requirement never said. Skipped items are
+    still visible — they're rendered under Intent as `inferred` regardless
+    of this check's outcome (core/report.py) — they just don't fail the run
+    for a gap that was never real requirement text to begin with.
+
+    Confirmed stage 2 needs no matching change: `run_coverage_geval` grades
+    `test_case.render()` against `chunk.text` directly, via a rubric that
+    never references `intent.expected` as a checklist (see
+    `integrations.deepeval.COVERAGE_EVALUATION_STEPS`) — it was never at
+    risk of gating on an unstated condition.
 
     A deterministic "did the test wrongly assert a not_expected condition"
     keyword check was tried and removed: bag-of-words matching can't judge
@@ -75,18 +97,21 @@ def check_coverage(test_case: TestCase, intent: Intent, chunk: RequirementChunk)
     """
     haystack = "\n".join(test_case.steps) + "\n" + test_case.expected_result
 
-    present, missing = _check_expected(intent.expected, haystack)
+    ungrounded = {item.claim for item in (intent_grounding or []) if not item.supported}
+    gated_expected = [e for e in intent.expected if e not in ungrounded]
+
+    present, missing = _check_expected(gated_expected, haystack)
 
     if missing:
         return CheckResult(
             name="coverage",
             passed=False,
-            score=len(present) / len(intent.expected) if intent.expected else 0.0,
+            score=len(present) / len(gated_expected) if gated_expected else 0.0,
             reason=f"Deterministic check failed — missing expected item(s): {missing}",
         )
 
-    # Stage 1 passed: every expected item present. Only now spend an LLM
-    # call on semantic judgment (which also covers not_expected).
+    # Stage 1 passed: every *grounded* expected item present. Only now
+    # spend an LLM call on semantic judgment (which also covers not_expected).
     return run_coverage_geval(chunk.text, test_case.render())
 
 
