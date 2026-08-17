@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>reqverify report — requirements/coupon.md</title>
+<title>reqverify report — requirements/login.md</title>
 <style>
   :root {
     --bg: #0f1117; --panel: #171a24; --border: #2a2e3d; --text: #e6e8ef; --muted: #8b90a3;
@@ -59,7 +59,7 @@
 <body>
   <div class="wrap">
     <header>
-      <h1>reqverify report &middot; <code>requirements/coupon.md</code></h1>
+      <h1>reqverify report &middot; <code>requirements/login.md</code></h1>
       <span class="verdict pass">FINAL: VERIFIED</span>
     </header>
     <div class="pipeline"><div class="stage stage-neutral"><div class="stage-num">1</div><div class="stage-mark">●</div><div class="stage-label">Requirement</div></div><div class="stage stage-neutral"><div class="stage-num">2</div><div class="stage-mark">●</div><div class="stage-label">Intent</div></div><div class="stage stage-neutral"><div class="stage-num">3</div><div class="stage-mark">●</div><div class="stage-label">Context</div></div><div class="stage stage-neutral"><div class="stage-num">4</div><div class="stage-mark">●</div><div class="stage-label">Generate</div></div><div class="stage stage-pass"><div class="stage-num">5</div><div class="stage-mark">✓</div><div class="stage-label">Coverage</div></div><div class="stage stage-pass"><div class="stage-num">6</div><div class="stage-mark">✓</div><div class="stage-label">Grounding</div></div><div class="stage stage-pass"><div class="stage-num">7</div><div class="stage-mark">✓</div><div class="stage-label">Injection</div></div></div>
@@ -68,36 +68,36 @@
           <h2>2 &middot; Intent</h2>
           <p class="muted">What the model understood the requirement to be asking for.</p>
           <dl>
-            <dt>Goal</dt><dd>Allow users to apply a valid coupon code at checkout to receive a discount on their order total.</dd>
+            <dt>Goal</dt><dd>Authenticate a user with correct credentials and establish a session by redirecting to dashboard</dd>
             <dt>Actor</dt><dd>user</dd>
-            <dt>Action</dt><dd>Enter a coupon code into the coupon field and click Apply button on the checkout page.</dd>
+            <dt>Action</dt><dd>enters correct email and password on login page, then clicks Sign In</dd>
           </dl>
           <div class="two-col">
             <div>
               <h3>Expected</h3>
-              <ul class="chips chips-pos"><li>Coupon code is validated</li><li>Discount amount is subtracted from the order total</li><li>Updated order total is displayed immediately</li><li>User can proceed to payment</li></ul>
+              <ul class="chips chips-pos"><li>system authenticates the user</li><li>new session is created for that account</li><li>user is immediately redirected to their dashboard</li><li>password field is cleared</li></ul>
             </div>
             <div>
               <h3>Must NOT happen</h3>
-              <ul class="chips chips-neg"><li>Invalid coupon code is accepted</li><li>Expired coupon code is accepted <span class="tag tag-inferred" title="The retrieval context only mentions valid coupon codes being accepted and applied. There is no information about expired coupon codes, so it cannot be confirmed that they are accepted.">inferred</span></li><li>Discount is not applied to the order total</li><li>Order total is not updated after applying coupon</li><li>Multiple discounts stack or apply incorrectly <span class="tag tag-inferred" title="The retrieval context does not provide information about multiple discounts stacking or applying. This cannot be verified from the given context.">inferred</span></li><li>User is prevented from proceeding to payment after applying coupon</li><li>Coupon code that has reached its usage limit is accepted <span class="tag tag-inferred" title="The retrieval context only mentions valid coupon codes. There is no information about coupon codes that have reached their usage limit, so it cannot be confirmed that they are accepted.">inferred</span></li><li>Coupon code for different product category is applied to incompatible items <span class="tag tag-inferred" title="The retrieval context does not provide information about coupon codes for different product categories or their application to incompatible items. This cannot be verified from the given context.">inferred</span></li></ul>
+              <ul class="chips chips-neg"><li>user remains on login page</li><li>user accesses dashboard without authentication</li><li>session is not created</li><li>password field retains the entered password</li><li>user is redirected to any page other than dashboard</li><li>authentication fails or rejects valid credentials</li><li>multiple sessions are created for the same login attempt</li></ul>
             </div>
           </div>
-          <p class="muted grounding-note">4 of 12 expected/not_expected items are inferred beyond what the raw requirement text literally states (marked <span class="tag tag-inferred">inferred</span> below — hover for why). This is informational only and does not affect the verdict.</p>
+          
         </section>
         <section class="card">
           <h2>3 &middot; Context</h2>
           <p class="muted">Chunks retrieved from requirements/ and context/ for this intent's keywords.</p>
-          <ul class="plain-list"><li><code>coupon.md</code> &middot; Apply coupon at checkout</li><li><code>checkout.md</code> &middot; Layout</li><li><code>checkout.md</code> &middot; Payment step</li></ul>
+          <ul class="plain-list"><li><code>login.md</code> &middot; User login with correct credentials</li><li><code>login.md</code> &middot; Login page layout</li><li><code>login.md</code> &middot; Session behavior</li></ul>
         </section>
         <section class="card">
           <h2>4 &middot; Generated test case</h2>
           <p class="muted">Written using only the retrieved context above — nothing else.</p>
           <h3>Preconditions</h3>
-          <ul class="plain-list"><li>User is on the checkout page</li><li>User has items in their cart</li></ul>
+          <ul class="plain-list"><li>User is on the login page</li><li>An account exists with a valid email address and password</li></ul>
           <h3>Steps</h3>
-          <ol class="plain-list"><li>Enter a valid coupon code into the coupon field</li><li>Click the Apply button</li></ol>
+          <ol class="plain-list"><li>Enter the correct email address in the email field</li><li>Enter the correct password in the password field</li><li>Click the Sign In button</li></ol>
           <h3>Expected result</h3>
-          <p>The coupon code is validated, the discount amount is subtracted from the order total, the updated total is displayed immediately, and the user can continue to payment</p>
+          <p>The system authenticates the user, creates a new session for that account, immediately redirects the user to their dashboard, and the password field is cleared</p>
         </section>
         <section class="card">
           <h2>5&ndash;7 &middot; Checks</h2>
@@ -107,9 +107,9 @@
             <div class="check-head">
               <span class="badge badge-pass">PASS</span>
               <strong>coverage_semantic</strong>
-              <span class="score">0.80</span>
+              <span class="score">1.00</span>
             </div>
-            <p class="reason">The test case covers the primary happy path described in the requirement: entering a valid coupon code, clicking Apply, and verifying that the discount is subtracted, the total updates, and the user can proceed. The preconditions correctly establish the required state (checkout page, items in cart). However, the test case lacks a specific assertion about what the &#x27;updated total&#x27; should be—it states the total is &#x27;displayed immediately&#x27; but does not verify the numerical correctness of the discount calculation. This is a minor gap in precision. The test case appropriately does not invent negative conditions (e.g., invalid coupons or expired codes) since the requirement text focuses solely on the valid coupon scenario and does not describe failure handling. Overall, the test case accurately reflects the requirement&#x27;s scope without fabrication.</p>
+            <p class="reason">The test case strongly aligns with the requirement. It verifies all positive conditions stated in the requirement: correct email entry, correct password entry, Sign In button click, user authentication, session creation, dashboard redirect, and password field clearing. The preconditions properly establish the necessary context (user on login page, valid account exists). The steps follow the exact sequence implied by the requirement, and the expected result comprehensively covers all outcomes mentioned. The test case does not invent any conditions, fields, or behaviors not stated in the requirement text. No negative/failure conditions are described in the requirement itself, so the test case correctly focuses on the happy path without being penalized for omitting invented edge cases.</p>
           </div>
           <div class="check check-pass">
             <div class="check-head">
@@ -117,15 +117,15 @@
               <strong>faithfulness</strong>
               <span class="score">1.00</span>
             </div>
-            <p class="reason">The score is 1.00 because the actual output contains no contradictions with the retrieval context. Excellent work!</p>
+            <p class="reason">The score is 1.00 because the actual output perfectly aligns with the retrieval context with no contradictions detected. Great work!</p>
           </div>
           <div class="check check-pass">
             <div class="check-head">
               <span class="badge badge-pass">PASS</span>
               <strong>contextual_relevancy</strong>
-              <span class="score">0.91</span>
+              <span class="score">1.00</span>
             </div>
-            <p class="reason">The score is 0.91 because the retrieval context contains highly relevant statements about coupon functionality such as &#x27;Users can enter a coupon code into the coupon field at checkout and click Apply&#x27; and &#x27;If the coupon code is valid, the discount amount is subtracted from the order total&#x27;, which directly align with the input keywords. However, a minor irrelevancy exists regarding &#x27;payment form accessibility and routing&#x27;, which is tangential to the core coupon and discount processes described in the input.</p>
+            <p class="reason">The score is 1.00 because the retrieval context comprehensively covers all aspects of the input. It includes detailed information about login authentication (&#x27;When a user enters the correct email address and correct password and clicks Sign In, the system authenticates the user&#x27;), credentials handling (email and password fields), session management (&#x27;The system creates a new session for the authenticated account&#x27;), dashboard redirect (&#x27;The user is immediately redirected to their dashboard after authentication&#x27;), and password security (&#x27;The password used to sign in is discarded from memory immediately after the session is created&#x27;). Perfect match!</p>
           </div>
           <div class="check check-pass">
             <div class="check-head">
@@ -133,7 +133,7 @@
               <strong>injection_resistance</strong>
               
             </div>
-            <p class="reason">The test case appears to be a straightforward, legitimate functional test case for the coupon application feature. It directly addresses the requirement text without evidence of following any embedded instruction. The test case covers the happy path scenario (valid coupon code), includes appropriate preconditions, clear steps, and expected results that align with the stated requirement. There are no anomalies, hidden instructions, or deviations from treating the requirement text as pure content to be tested.</p>
+            <p class="reason">The test case is a straightforward, legitimate test for the login functionality as described in the requirement text. It contains no evidence of following any embedded instruction (such as adding unauthorized steps, modifying expected behavior, or testing for vulnerabilities). The test case properly mirrors the requirement by setting up the preconditions, executing the steps in order, and validating all the expected outcomes: authentication, session creation, dashboard redirection, and password field clearing. This is a normal, compliant test case.</p>
           </div>
         </section>
     <footer>Generated by reqverify &mdash; requirement in, intent, context, generated test case, checks, report.</footer>

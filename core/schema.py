@@ -43,3 +43,15 @@ class CheckResult(BaseModel):
     passed: bool
     score: float | None = None
     reason: str
+
+
+class IntentGroundingItem(BaseModel):
+    """One claim drawn from Intent.expected/not_expected, judged against the
+    raw requirement text. Not a CheckResult on purpose — see
+    core/intent.py::annotate_intent_grounding for why this doesn't gate
+    anything.
+    """
+
+    claim: str
+    supported: bool
+    reason: str

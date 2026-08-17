@@ -14,7 +14,7 @@ from deepeval.models import AnthropicModel
 from deepeval.test_case import LLMTestCase, SingleTurnParams
 
 from core.config import ANTHROPIC_MODEL, get_anthropic_api_key
-from core.schema import CheckResult
+from core.schema import CheckResult, IntentGroundingItem
 
 COVERAGE_THRESHOLD = 0.7
 FAITHFULNESS_THRESHOLD = 0.7
@@ -88,3 +88,55 @@ def run_contextual_relevancy(query: str, retrieval_context: list[str]) -> CheckR
         score=metric.score,
         reason=metric.reason,
     )
+
+
+def run_intent_grounding(
+    expected: list[str], not_expected: list[str], raw_requirement_text: str
+) -> list[IntentGroundingItem]:
+    """Same FaithfulnessMetric used in run_faithfulness, pointed at intent
+    extraction's own output instead of the generated test case — is what
+    Intent.expected/not_expected claims are themselves supported by the raw
+    requirement text, or did extraction infer beyond it? This is a
+    transparency annotation, not a gate: see core/intent.py's
+    annotate_intent_grounding for why nothing here produces a CheckResult.
+
+    FaithfulnessMetric normally extracts its own claims from actual_output;
+    here each claim is already one atomic Intent.expected/not_expected
+    string, so claims are supplied directly and only the verification step
+    runs — one Claude call instead of two, and an exact 1:1 correspondence
+    between input claims and returned items instead of a hoped-for one.
+
+    Polarity matters here and is easy to get backwards: FaithfulnessMetric's
+    "yes"/"no" always means "is this claim's literal text supported by the
+    context". For an `expected` claim that's the intuitive reading — "yes"
+    is grounded. For a `not_expected` claim, the claim text itself describes
+    a bad outcome, so the well-grounded case is the text explicitly ruling
+    it out — verdict "no" (contradicted) — not "yes". "idk" (context is
+    silent either way) is the real "inferred beyond the text" case for
+    both, and a `not_expected` claim the context actually confirms ("yes")
+    is flagged as ungrounded too, since that would mean the text describes
+    the bad outcome happening.
+    """
+    claims = expected + not_expected
+    if not claims:
+        return []
+    metric = FaithfulnessMetric(model=_judge(), threshold=FAITHFULNESS_THRESHOLD)
+    metric.claims = claims
+    metric.truths = metric._generate_truths([raw_requirement_text], multimodal=False)
+    metric.verdicts = metric._generate_verdicts(multimodal=False)
+    _fallback_reason = {
+        "yes": "supported by the requirement text",
+        "no": "contradicted by the requirement text",
+        "idk": "the requirement text doesn't address this either way",
+    }
+
+    items = []
+    for idx, (claim, verdict) in enumerate(zip(claims, metric.verdicts)):
+        is_not_expected = idx >= len(expected)
+        v = verdict.verdict.strip().lower()
+        grounded = (v == "no") if is_not_expected else (v == "yes")
+        reason = verdict.reason or _fallback_reason.get(v, "unclear")
+        if is_not_expected and v == "yes":
+            reason = "the requirement text appears to support this happening, which contradicts it being listed as something that must NOT happen — " + reason
+        items.append(IntentGroundingItem(claim=claim, supported=grounded, reason=reason))
+    return items

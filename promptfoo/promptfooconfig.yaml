@@ -35,10 +35,12 @@ redteam:
     - basic
   # Attack GENERATION is deliberately left on Promptfoo's default (it falls
   # back to a hosted service, no API key required) rather than pointed at
-  # Claude — Anthropic's usage policies discourage using their API to
-  # generate adversarial/harmful content, even for this kind of defensive
-  # red-teaming. The target (our provider) and the judge (below) are both
-  # genuinely Claude, per this project's one-API-one-provider rule.
+  # Claude — this is authorized, defensive red-teaming of our own pipeline,
+  # but Claude's own safety guardrails can still refuse or resist
+  # generating attack-payload text directly even for a legitimate use, so
+  # generation uses Promptfoo's own path instead. The target (our
+  # provider) and the judge (below) are both genuinely Claude, per this
+  # project's one-API-one-provider rule.
 
 defaultTest:
   options:

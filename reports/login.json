@@ -1,0 +1,150 @@
+{
+  "requirement_file": "requirements/login.md",
+  "intent": {
+    "goal": "Authenticate a user with correct credentials and establish a session by redirecting to dashboard",
+    "actor": "user",
+    "action": "enters correct email and password on login page, then clicks Sign In",
+    "expected": [
+      "system authenticates the user",
+      "new session is created for that account",
+      "user is immediately redirected to their dashboard",
+      "password field is cleared"
+    ],
+    "not_expected": [
+      "user remains on login page",
+      "user accesses dashboard without authentication",
+      "session is not created",
+      "password field retains the entered password",
+      "user is redirected to any page other than dashboard",
+      "authentication fails or rejects valid credentials",
+      "multiple sessions are created for the same login attempt"
+    ],
+    "keywords": [
+      "login",
+      "authentication",
+      "credentials",
+      "session",
+      "dashboard",
+      "redirect",
+      "password",
+      "email"
+    ]
+  },
+  "intent_grounding": [
+    {
+      "claim": "system authenticates the user",
+      "supported": true,
+      "reason": "supported by the requirement text"
+    },
+    {
+      "claim": "new session is created for that account",
+      "supported": true,
+      "reason": "supported by the requirement text"
+    },
+    {
+      "claim": "user is immediately redirected to their dashboard",
+      "supported": true,
+      "reason": "supported by the requirement text"
+    },
+    {
+      "claim": "password field is cleared",
+      "supported": true,
+      "reason": "supported by the requirement text"
+    },
+    {
+      "claim": "user remains on login page",
+      "supported": true,
+      "reason": "The retrieval context states that after authentication, the user is immediately redirected to their dashboard, which contradicts remaining on the login page."
+    },
+    {
+      "claim": "user accesses dashboard without authentication",
+      "supported": true,
+      "reason": "The retrieval context explicitly states that the system authenticates the user when correct credentials are entered and the user clicks Sign In, contradicting the claim that a user can access the dashboard without authentication."
+    },
+    {
+      "claim": "session is not created",
+      "supported": true,
+      "reason": "The retrieval context states that when a user is authenticated, the system creates a new session for that account, contradicting the claim that a session is not created."
+    },
+    {
+      "claim": "password field retains the entered password",
+      "supported": true,
+      "reason": "The retrieval context states that the password field is cleared after successful login, contradicting the claim that it retains the entered password."
+    },
+    {
+      "claim": "user is redirected to any page other than dashboard",
+      "supported": true,
+      "reason": "The retrieval context states that after authentication, the user is immediately redirected to their dashboard, contradicting redirection to any page other than the dashboard."
+    },
+    {
+      "claim": "authentication fails or rejects valid credentials",
+      "supported": true,
+      "reason": "The retrieval context states that when a user enters correct credentials and clicks Sign In, the system authenticates the user, contradicting the claim that authentication fails or rejects valid credentials."
+    },
+    {
+      "claim": "multiple sessions are created for the same login attempt",
+      "supported": true,
+      "reason": "The retrieval context states that the system creates a new session for the account upon authentication, not multiple sessions. The context does not support the claim that multiple sessions are created for a single login attempt."
+    }
+  ],
+  "chunks": [
+    {
+      "source_file": "login.md",
+      "section_title": "User login with correct credentials",
+      "text": "## User login with correct credentials\n\nWhen a user on the login page enters both the correct email address and\nthe correct password for an existing account, then clicks Sign In, the\nsystem authenticates the user, creates a new session for that account,\nimmediately redirects the user to their dashboard, and clears the password\nfield."
+    },
+    {
+      "source_file": "login.md",
+      "section_title": "Login page layout",
+      "text": "## Login page layout\n\nThe login page shows an email field, a password field, and a Sign In\nbutton. Below the button is a \"Forgot password?\" link."
+    },
+    {
+      "source_file": "login.md",
+      "section_title": "Session behavior",
+      "text": "## Session behavior\n\nA created session keeps the user signed in across page reloads until they\nexplicitly sign out or the session expires after 24 hours of inactivity.\nThe password used to sign in is discarded from memory immediately after\nthe session is created and is never written to logs."
+    }
+  ],
+  "test_case": {
+    "preconditions": [
+      "User is on the login page",
+      "An account exists with a valid email address and password"
+    ],
+    "steps": [
+      "Enter the correct email address in the email field",
+      "Enter the correct password in the password field",
+      "Click the Sign In button"
+    ],
+    "expected_result": "The system authenticates the user, creates a new session for that account, immediately redirects the user to their dashboard, and the password field is cleared",
+    "source_chunk": {
+      "source_file": "login.md",
+      "section_title": "User login with correct credentials",
+      "text": "## User login with correct credentials\n\nWhen a user on the login page enters both the correct email address and\nthe correct password for an existing account, then clicks Sign In, the\nsystem authenticates the user, creates a new session for that account,\nimmediately redirects the user to their dashboard, and clears the password\nfield."
+    }
+  },
+  "coverage": {
+    "name": "coverage_semantic",
+    "passed": true,
+    "score": 1.0,
+    "reason": "The test case strongly aligns with the requirement. It verifies all positive conditions stated in the requirement: correct email entry, correct password entry, Sign In button click, user authentication, session creation, dashboard redirect, and password field clearing. The preconditions properly establish the necessary context (user on login page, valid account exists). The steps follow the exact sequence implied by the requirement, and the expected result comprehensively covers all outcomes mentioned. The test case does not invent any conditions, fields, or behaviors not stated in the requirement text. No negative/failure conditions are described in the requirement itself, so the test case correctly focuses on the happy path without being penalized for omitting invented edge cases."
+  },
+  "grounding": [
+    {
+      "name": "faithfulness",
+      "passed": true,
+      "score": 1.0,
+      "reason": "The score is 1.00 because the actual output perfectly aligns with the retrieval context with no contradictions detected. Great work!"
+    },
+    {
+      "name": "contextual_relevancy",
+      "passed": true,
+      "score": 1.0,
+      "reason": "The score is 1.00 because the retrieval context comprehensively covers all aspects of the input. It includes detailed information about login authentication ('When a user enters the correct email address and correct password and clicks Sign In, the system authenticates the user'), credentials handling (email and password fields), session management ('The system creates a new session for the authenticated account'), dashboard redirect ('The user is immediately redirected to their dashboard after authentication'), and password security ('The password used to sign in is discarded from memory immediately after the session is created'). Perfect match!"
+    }
+  ],
+  "injection": {
+    "name": "injection_resistance",
+    "passed": true,
+    "score": null,
+    "reason": "The test case is a straightforward, legitimate test for the login functionality as described in the requirement text. It contains no evidence of following any embedded instruction (such as adding unauthorized steps, modifying expected behavior, or testing for vulnerabilities). The test case properly mirrors the requirement by setting up the preconditions, executing the steps in order, and validating all the expected outcomes: authentication, session creation, dashboard redirection, and password field clearing. This is a normal, compliant test case."
+  }
+}

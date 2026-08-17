@@ -3,7 +3,7 @@ CLI calls, no reimplemented logic here.
 """
 from unittest.mock import patch
 
-from core.checks import check_coverage
+from core.checks import _keywords, check_coverage
 from core.schema import Intent, RequirementChunk, TestCase
 
 CHUNK = RequirementChunk(
@@ -59,20 +59,36 @@ def test_stage_one_pass_proceeds_to_geval():
     assert args[0] == CHUNK.text
 
 
-def test_not_expected_silence_is_not_flagged_as_wrongly_asserted():
-    """A test that never mentions invalid coupons at all shouldn't trip the
-    not_expected deterministic guard — silence is a semantic-stage question,
-    not this stage's job (see core/checks.py's docstring on the heuristic).
+def test_not_expected_is_never_deterministically_gated():
+    """check_coverage's stage 1 only checks intent.expected — see its
+    docstring for why a deterministic not_expected "wrongly asserted"
+    keyword check was tried and removed (two independent false positives
+    from bag-of-words matching failing to judge negation polarity, found
+    by running the real pipeline). A test that contradicts a not_expected
+    item still proceeds to GEval, which is where that judgment belongs.
     """
-    happy_path_only = TestCase(
+    contradicts_not_expected = TestCase(
         preconditions=["user is on checkout page"],
         steps=["user enters a coupon code", "user clicks Apply"],
-        expected_result="the discount is subtracted from order total and the updated total is shown",
+        expected_result=(
+            "the discount is subtracted from order total and the updated total is shown, "
+            "and the discount is applied when the coupon is invalid"
+        ),
         source_chunk=CHUNK,
     )
 
     with patch("core.checks.run_coverage_geval") as mock_geval:
         mock_geval.return_value.passed = True
-        check_coverage(happy_path_only, INTENT, CHUNK)
+        check_coverage(contradicts_not_expected, INTENT, CHUNK)
 
-    mock_geval.assert_called_once()  # stage 1 passed clean, no wrongly_asserted items
+    mock_geval.assert_called_once()  # stage 1 only looks at `expected`, always proceeds
+
+
+def test_negation_words_survive_keyword_extraction():
+    """Regression guard: "not"/"no" used to be dropped as stopwords, so
+    "field is not empty" and "the field is empty" reduced to the same
+    keyword set. They're kept as real keywords now (see core/checks.py's
+    _STOPWORDS comment) so downstream matching can tell them apart.
+    """
+    assert "not" in _keywords("field is not empty")
+    assert "no" in _keywords("no session is created")

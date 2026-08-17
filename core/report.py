@@ -6,12 +6,16 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from core.schema import CheckResult, Intent, RequirementChunk, TestCase
+from core.schema import CheckResult, Intent, IntentGroundingItem, RequirementChunk, TestCase
 
 
 class Report(BaseModel):
     requirement_file: str
     intent: Intent | None = None
+    # Transparency annotation on intent's own output — deliberately NOT part
+    # of `checks` below and NOT read by `passed`. See
+    # core/intent.py::annotate_intent_grounding for why.
+    intent_grounding: list[IntentGroundingItem] = []
     chunks: list[RequirementChunk] = []
     test_case: TestCase | None = None
     coverage: CheckResult | None = None
@@ -64,16 +68,35 @@ def _score_str(score: float | None, threshold: float | None = None) -> str:
     return f" {score:.2f} / {threshold:.2f}" if threshold is not None else f" {score:.2f}"
 
 
+def _grounding_note(intent_grounding: list[IntentGroundingItem]) -> tuple[str, list[str]]:
+    """A one-line summary plus per-item detail for the Intent step — never
+    a pass/fail mark, just what fraction of expected/not_expected items the
+    raw requirement text itself supports.
+    """
+    if not intent_grounding:
+        return "", []
+    inferred = [i for i in intent_grounding if not i.supported]
+    if not inferred:
+        return "", []
+    summary = (
+        f"({len(inferred)} of {len(intent_grounding)} expected/not_expected items "
+        f"inferred beyond the literal requirement text — see below)"
+    )
+    detail = [f"  inferred: {i.claim} — {i.reason}" for i in inferred]
+    return summary, detail
+
+
 def render_console(report: Report) -> str:
     steps: list[tuple[str, list[str]]] = []
 
     if report.intent:
+        note, note_detail = _grounding_note(report.intent_grounding)
+        expected_line = f"expected: {'; '.join(report.intent.expected)}"
+        if note:
+            expected_line += f" {note}"
         steps.append((
             "Intent",
-            [
-                f"goal: {report.intent.goal}",
-                f"expected: {'; '.join(report.intent.expected)}",
-            ],
+            [f"goal: {report.intent.goal}", expected_line, *note_detail],
         ))
     if report.chunks:
         sources = ", ".join(sorted({c.source_file for c in report.chunks}))
@@ -123,6 +146,16 @@ def render_markdown(report: Report) -> str:
         lines.append(f"- expected: {report.intent.expected}")
         lines.append(f"- not_expected: {report.intent.not_expected}")
         lines.append("")
+        inferred = [i for i in report.intent_grounding if not i.supported]
+        if inferred:
+            lines.append(
+                f"**Intent grounding (informational, not gated):** "
+                f"{len(inferred)} of {len(report.intent_grounding)} expected/not_expected "
+                f"items above are inferred beyond what the raw requirement text literally states:"
+            )
+            for i in inferred:
+                lines.append(f"- *{i.claim}* — {i.reason}")
+            lines.append("")
     if report.chunks:
         lines.append("## Context")
         for c in report.chunks:
@@ -190,6 +223,27 @@ def render_html(report: Report) -> str:
 
     if report.intent:
         i = report.intent
+        inferred_reasons = {g.claim: g.reason for g in report.intent_grounding if not g.supported}
+
+        def chip(text: str) -> str:
+            if text in inferred_reasons:
+                return (
+                    f'<li>{_esc(text)} '
+                    f'<span class="tag tag-inferred" title="{_esc(inferred_reasons[text])}">inferred</span></li>'
+                )
+            return f"<li>{_esc(text)}</li>"
+
+        grounding_note = ""
+        n_inferred = len(inferred_reasons)
+        n_total = len(report.intent_grounding)
+        if n_inferred:
+            grounding_note = (
+                f'<p class="muted grounding-note">{n_inferred} of {n_total} expected/not_expected items '
+                f"are inferred beyond what the raw requirement text literally states (marked "
+                f'<span class="tag tag-inferred">inferred</span> below — hover for why). '
+                f"This is informational only and does not affect the verdict.</p>"
+            )
+
         sections.append(f"""
         <section class="card">
           <h2>2 &middot; Intent</h2>
@@ -202,13 +256,14 @@ def render_html(report: Report) -> str:
           <div class="two-col">
             <div>
               <h3>Expected</h3>
-              <ul class="chips chips-pos">{"".join(f"<li>{_esc(e)}</li>" for e in i.expected)}</ul>
+              <ul class="chips chips-pos">{"".join(chip(e) for e in i.expected)}</ul>
             </div>
             <div>
               <h3>Must NOT happen</h3>
-              <ul class="chips chips-neg">{"".join(f"<li>{_esc(e)}</li>" for e in i.not_expected)}</ul>
+              <ul class="chips chips-neg">{"".join(chip(e) for e in i.not_expected)}</ul>
             </div>
           </div>
+          {grounding_note}
         </section>""")
 
     if report.chunks:
@@ -314,6 +369,9 @@ def render_html(report: Report) -> str:
   .chips li {{ padding: 6px 10px; border-radius: 6px; font-size: 13px; }}
   .chips-pos li {{ background: rgba(53,208,127,0.10); border-left: 3px solid var(--pass); }}
   .chips-neg li {{ background: rgba(255,93,108,0.10); border-left: 3px solid var(--fail); }}
+  .tag {{ font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 1px 6px; border-radius: 999px; margin-left: 6px; cursor: help; }}
+  .tag-inferred {{ background: rgba(138,99,210,0.18); color: var(--accent); border: 1px solid var(--accent); }}
+  .grounding-note {{ margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }}
   .plain-list {{ margin: 0; padding-left: 20px; }}
   .plain-list li {{ margin-bottom: 4px; }}
   .check {{ border-radius: 8px; padding: 12px 14px; margin-top: 10px; border: 1px solid var(--border); }}

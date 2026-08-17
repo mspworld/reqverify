@@ -16,13 +16,20 @@ from integrations.deepeval import run_contextual_relevancy, run_coverage_geval, 
 _STOPWORDS = {
     "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
     "to", "of", "in", "on", "for", "and", "or", "with", "as", "by", "at",
-    "it", "its", "this", "that", "not", "no", "does", "do", "did", "if",
+    "it", "its", "this", "that", "does", "do", "did", "if",
     "when", "than", "then", "into", "from", "should", "must", "can",
 }
+# "not"/"no" are deliberately NOT stopwords: check_grounding's Intent-side
+# annotation (core/intent.py) and this module both do keyword work where
+# stripping them would make "session is not created" keyword-identical to
+# "session is created".
+
+_NEGATIONS = {"not", "no", "never"}  # kept regardless of the length filter below
+
 
 def _keywords(phrase: str) -> set[str]:
     words = re.findall(r"[a-z0-9']+", phrase.lower())
-    return {w for w in words if len(w) >= 3 and w not in _STOPWORDS}
+    return {w for w in words if (len(w) >= 3 or w in _NEGATIONS) and w not in _STOPWORDS}
 
 
 def _coverage(keywords: set[str], haystack: str) -> float:
@@ -43,46 +50,43 @@ def _check_expected(expected: list[str], haystack: str, threshold: float = 0.6) 
     return present, missing
 
 
-def _check_not_expected(not_expected: list[str], haystack: str, threshold: float = 0.85) -> list[str]:
-    """Deterministic guard against a test almost verbatim restating a bad
-    outcome — negation word included (e.g. a not_expected phrase reads
-    "applied without being displayed"; this only fires if the output
-    echoes nearly that whole phrase, "without" and all).
-
-    Deliberately conservative: pure keyword matching can't parse negation,
-    so splitting a phrase into "topic" vs "outcome" words and checking for
-    negation nearby produces false positives (a test correctly saying
-    "displayed" trips a check built around the word "displayed" appearing
-    in the bad-outcome phrase, even though here it's the good outcome).
-    Requiring near-total coverage of the *whole* phrase, negation word
-    included, avoids that. Whether a negative condition was actually
-    verified (vs. simply not contradicted) is judged by the semantic
-    GEval stage, not here.
-    """
-    return [item for item in not_expected if _coverage(_keywords(item), haystack) >= threshold]
-
-
 def check_coverage(test_case: TestCase, intent: Intent, chunk: RequirementChunk) -> CheckResult:
+    """Two stages: deterministic keyword presence check on `expected` only,
+    then (if that passes) semantic GEval judgment — matching the original
+    build spec's stage-1 algorithm exactly (intent.expected only, no
+    not_expected sub-check).
+
+    A deterministic "did the test wrongly assert a not_expected condition"
+    keyword check was tried and removed: bag-of-words matching can't judge
+    negation polarity. Two independent, real false positives came out of
+    testing this against actual generated output — "session is not
+    created" scored as a near-verbatim match against a test correctly
+    saying "a new session is created" (the phrases share every content
+    word once "not" is treated as a stopword), and separately "user CAN
+    log in with the old password" against a test correctly saying "the old
+    password no longer works for login" (the two phrases share every
+    content word even though their negation is expressed with completely
+    different words). No stopword tweak fixes the second case — the
+    negation cue in the claim and the negation cue in the test don't have
+    to be the same word. That judgment needs actual semantic understanding,
+    which is exactly what stage 2's GEval rubric already provides (its
+    evaluation_steps explicitly instruct penalizing a test that asserts a
+    negative condition as succeeding) — see integrations/deepeval.py.
+    """
     haystack = "\n".join(test_case.steps) + "\n" + test_case.expected_result
 
     present, missing = _check_expected(intent.expected, haystack)
-    wrongly_asserted = _check_not_expected(intent.not_expected, haystack)
 
-    if missing or wrongly_asserted:
-        parts = []
-        if missing:
-            parts.append(f"missing expected item(s): {missing}")
-        if wrongly_asserted:
-            parts.append(f"wrongly asserted not_expected item(s): {wrongly_asserted}")
+    if missing:
         return CheckResult(
             name="coverage",
             passed=False,
             score=len(present) / len(intent.expected) if intent.expected else 0.0,
-            reason="Deterministic check failed — " + "; ".join(parts),
+            reason=f"Deterministic check failed — missing expected item(s): {missing}",
         )
 
-    # Stage 1 passed: every expected item present, no not_expected item
-    # wrongly asserted. Only now spend an LLM call on semantic judgment.
+    # Stage 1 passed: every expected item present. Only now spend an LLM
+    # call on semantic judgment (which also covers not_expected).
     return run_coverage_geval(chunk.text, test_case.render())
 
 

@@ -13,7 +13,8 @@ import json
 import anthropic
 
 from core.config import ANTHROPIC_MODEL, get_anthropic_api_key
-from core.schema import Intent
+from core.schema import Intent, IntentGroundingItem
+from integrations.deepeval import run_intent_grounding
 
 _TOOL = {
     "name": "record_intent",
@@ -72,3 +73,18 @@ def extract_intent(requirement_text: str) -> Intent:
         if block.type == "tool_use" and block.name == "record_intent":
             return Intent(**block.input)
     raise RuntimeError(f"model did not call record_intent: {json.dumps([b.type for b in resp.content])}")
+
+
+def annotate_intent_grounding(intent: Intent, raw_requirement_text: str) -> list[IntentGroundingItem]:
+    """Is intent.expected/not_expected itself grounded in the requirement
+    text, or did extraction infer beyond it? extract_intent() has no ground
+    truth to check itself against — the requirement text is that ground
+    truth, so this checks intent's own output the same way check_grounding
+    later checks the generated test case's output.
+
+    Deliberately NOT a CheckResult and NOT wired into any pass/fail verdict:
+    gating on this would just relocate check_coverage's job, not add a new
+    one (see core/checks.py's two-stage design). This is surfaced in the
+    report as a transparency annotation only — see core/report.py.
+    """
+    return run_intent_grounding(intent.expected, intent.not_expected, raw_requirement_text)

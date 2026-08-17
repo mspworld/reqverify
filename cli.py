@@ -9,16 +9,22 @@ import click
 from core.checks import check_coverage, check_grounding, check_injection_resistance
 from core.context import chunk_file, load_context, retrieve
 from core.generate import generate_test_case
-from core.intent import extract_intent
+from core.intent import annotate_intent_grounding, extract_intent
 from core.report import Report, render_console, write_report
-from core.schema import Intent, RequirementChunk, TestCase
+from core.schema import Intent, IntentGroundingItem, RequirementChunk, TestCase
 
 CONTEXT_DIRS = ["requirements", "context"]
 
 
 def _select_target_text(requirement_file: str, task: str | None) -> str:
-    """Default: whole file, or its first ## section if it has any (Section 3).
+    """Default: whole file, or its first ## section if it has any.
     --task <substring> picks a specific section by title instead.
+
+    chunk_file() puts a preamble chunk first (section_title=None) when the
+    file has any text before its first ## header — e.g. an H1 title line.
+    chunks[0] is that preamble, not "the first section", so picking it
+    blindly silently starves intent extraction down to just the title line
+    on any file that has one. Skip straight to the first real section.
     """
     chunks = chunk_file(Path(requirement_file))
     if not chunks:
@@ -28,11 +34,22 @@ def _select_target_text(requirement_file: str, task: str | None) -> str:
             if c.section_title and task.lower() in c.section_title.lower():
                 return c.text
         raise click.ClickException(f"no section matching --task {task!r} found in {requirement_file}")
+    for c in chunks:
+        if c.section_title is not None:
+            return c.text
     return chunks[0].text
 
 
 def _run_intent(requirement_file: str, task: str | None) -> Intent:
     return extract_intent(_select_target_text(requirement_file, task))
+
+
+def _run_intent_grounding(requirement_file: str, the_intent: Intent) -> list[IntentGroundingItem]:
+    """Grounded against the whole raw file, not the (possibly narrower)
+    section extract_intent() actually saw — see annotate_intent_grounding's
+    docstring for why that's the more generous, correct comparison.
+    """
+    return annotate_intent_grounding(the_intent, Path(requirement_file).read_text())
 
 
 def _run_context(intent: Intent) -> list[RequirementChunk]:
@@ -69,7 +86,8 @@ def main() -> None:
 @_task_option
 def intent(requirement_file: str, task: str | None) -> None:
     result = _run_intent(requirement_file, task)
-    report = Report(requirement_file=requirement_file, intent=result)
+    grounding_items = _run_intent_grounding(requirement_file, result)
+    report = Report(requirement_file=requirement_file, intent=result, intent_grounding=grounding_items)
     _finish(report, None, gate_on_checks=False)
 
 
@@ -79,12 +97,13 @@ def intent(requirement_file: str, task: str | None) -> None:
 @_report_out_option
 def coverage(requirement_file: str, task: str | None, report_out: str | None) -> None:
     the_intent = _run_intent(requirement_file, task)
+    grounding_items = _run_intent_grounding(requirement_file, the_intent)
     chunks = _run_context(the_intent)
     test_case = _run_generate(the_intent, chunks[0])
     result = check_coverage(test_case, the_intent, chunks[0])
     report = Report(
-        requirement_file=requirement_file, intent=the_intent, chunks=chunks,
-        test_case=test_case, coverage=result,
+        requirement_file=requirement_file, intent=the_intent, intent_grounding=grounding_items,
+        chunks=chunks, test_case=test_case, coverage=result,
     )
     _finish(report, report_out, gate_on_checks=True)
 
@@ -95,12 +114,13 @@ def coverage(requirement_file: str, task: str | None, report_out: str | None) ->
 @_report_out_option
 def grounding(requirement_file: str, task: str | None, report_out: str | None) -> None:
     the_intent = _run_intent(requirement_file, task)
+    grounding_items = _run_intent_grounding(requirement_file, the_intent)
     chunks = _run_context(the_intent)
     test_case = _run_generate(the_intent, chunks[0])
     results = check_grounding(test_case, " ".join(the_intent.keywords), chunks)
     report = Report(
-        requirement_file=requirement_file, intent=the_intent, chunks=chunks,
-        test_case=test_case, grounding=results,
+        requirement_file=requirement_file, intent=the_intent, intent_grounding=grounding_items,
+        chunks=chunks, test_case=test_case, grounding=results,
     )
     _finish(report, report_out, gate_on_checks=True)
 
@@ -111,12 +131,13 @@ def grounding(requirement_file: str, task: str | None, report_out: str | None) -
 @_report_out_option
 def injection(requirement_file: str, task: str | None, report_out: str | None) -> None:
     the_intent = _run_intent(requirement_file, task)
+    grounding_items = _run_intent_grounding(requirement_file, the_intent)
     chunks = _run_context(the_intent)
     test_case = _run_generate(the_intent, chunks[0])
     result = check_injection_resistance(test_case, chunks[0])
     report = Report(
-        requirement_file=requirement_file, intent=the_intent, chunks=chunks,
-        test_case=test_case, injection=result,
+        requirement_file=requirement_file, intent=the_intent, intent_grounding=grounding_items,
+        chunks=chunks, test_case=test_case, injection=result,
     )
     _finish(report, report_out, gate_on_checks=True)
 
@@ -127,14 +148,15 @@ def injection(requirement_file: str, task: str | None, report_out: str | None) -
 @_report_out_option
 def evaluate(requirement_file: str, task: str | None, report_out: str | None) -> None:
     the_intent = _run_intent(requirement_file, task)
+    grounding_items = _run_intent_grounding(requirement_file, the_intent)
     chunks = _run_context(the_intent)
     test_case = _run_generate(the_intent, chunks[0])
     cov = check_coverage(test_case, the_intent, chunks[0])
     ground = check_grounding(test_case, " ".join(the_intent.keywords), chunks)
     inj = check_injection_resistance(test_case, chunks[0])
     report = Report(
-        requirement_file=requirement_file, intent=the_intent, chunks=chunks,
-        test_case=test_case, coverage=cov, grounding=ground, injection=inj,
+        requirement_file=requirement_file, intent=the_intent, intent_grounding=grounding_items,
+        chunks=chunks, test_case=test_case, coverage=cov, grounding=ground, injection=inj,
     )
     _finish(report, report_out, gate_on_checks=True)
 
