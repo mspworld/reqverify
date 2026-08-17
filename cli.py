@@ -1,4 +1,4 @@
-# closed loop, nanoGPT-style: input -> generate -> check -> report
+# closed loop: requirement -> intent -> context -> generate -> check -> report
 from __future__ import annotations
 
 import sys
@@ -48,12 +48,15 @@ def _finish(report: Report, report_out: str | None, gate_on_checks: bool) -> Non
     click.echo(render_console(report))
     if report_out:
         write_report(report, report_out)
-        click.echo(f"\nWrote {report_out}.json and {report_out}.md")
+        click.echo(f"\nWrote {report_out}.json, {report_out}.md, and {report_out}.html")
     sys.exit((0 if report.passed else 1) if gate_on_checks else 0)
 
 
 _task_option = click.option("--task", default=None, help="Match a specific ## section by title.")
-_report_out_option = click.option("--report-out", default=None, help="Write <path>.json and <path>.md.")
+_report_out_option = click.option(
+    "--report-out", default=None,
+    help="Write <path>.json, <path>.md, and <path>.html (open the .html in any browser).",
+)
 
 
 @click.group()
