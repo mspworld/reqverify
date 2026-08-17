@@ -1,0 +1,28 @@
+[project]
+name = "reqverify"
+version = "0.1.0"
+description = "Reads a written requirement, extracts its intent, generates a grounded test case, and checks it for coverage, grounding, and prompt-injection resistance."
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2",
+    "anthropic>=0.40",
+    "langchain-community>=0.3",
+    "rank-bm25>=0.2",
+    "deepeval>=1.4",
+    "click>=8.1",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+reqverify = "cli:main"
+
+[tool.setuptools]
+py-modules = ["cli"]
+packages = ["core", "integrations"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

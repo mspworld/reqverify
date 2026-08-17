@@ -1,0 +1,13 @@
+# A redteam-section-free copy of promptfooconfig.yaml, for `promptfoo eval`
+# smoke-testing the provider directly (any config with a `redteam:` section
+# forces Promptfoo's hosted email-verification flow even for a plain eval —
+# see README). The real automated sweep is promptfooconfig.yaml's `redteam`
+# section, run via `promptfoo redteam run`.
+prompts:
+  - '{{requirement_text}}'
+
+providers:
+  - id: file://../integrations/promptfoo.py
+    label: reqverify-generate
+    config:
+      pythonExecutable: ../.venv/bin/python

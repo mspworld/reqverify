@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.env
+.deepeval-cache.json
+node_modules/
+promptfoo/.promptfoo/
+
+# reports/ and promptfoo/results.json are NOT ignored: they're the real
+# evidence behind this README's claims (coupon.md, _redteam_injected.md,
+# and the promptfoo smoke-eval results), committed directly for zero-setup
+# review.
